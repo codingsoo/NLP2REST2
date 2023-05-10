@@ -3,3 +3,7 @@
 .DS_Store/
 
 venv/
+
+nl.json
+rest_model
+rest_model.wv.vectors_ngrams.npy
