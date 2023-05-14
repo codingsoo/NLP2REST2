@@ -7,3 +7,5 @@ venv/
 nl.json
 rest_model
 rest_model.wv.vectors_ngrams.npy
+NLP2REST-log-*.txt
+output.json

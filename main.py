@@ -1,18 +1,35 @@
-import os
+from openapi.parser import OpenAPIParser
+from openapi.validator import Validator
+from openapi.rule_generator import RuleGenerator
+from openapi.enhancer import Enhancer
 from embeddings.fasttext_model import FastTextTrainer
-from gensim.models import FastText
 
 
 def main():
-    output_model_file = "rest_model"
+    model_path = "rest_model"
+    fasttext_trainer = FastTextTrainer("APIs-guru/specifications", model_path)
+    fasttext_trainer.load_model(model_path)
 
-    if os.path.exists(output_model_file):
-        print(f"Loading existing model from '{output_model_file}'.")
-        model = FastText.load(output_model_file)
-    else:
-        print(f"Training new model, as '{output_model_file}' not found.")
-        ft_trainer = FastTextTrainer(specs_dir="./APIs-guru/specifications", output_model_file=output_model_file)
-        model = ft_trainer.train_model()
+    rule_generator = RuleGenerator("settings2.yaml", fasttext_trainer)
+
+    spec_parser = OpenAPIParser('benchmark/swagger/fdic.yaml')
+    operations = spec_parser.parse_operations()
+
+    parsed_rules = {}
+    for operation in operations:
+        print(operation['operation_id'] + " is processing...")
+        param_names = [param['name'] for param in operation["parameters"]]
+        operation_rules = {}
+        for parameter in operation["parameters"]:
+            param_rule = rule_generator.extract_keywords(parameter['description'], param_names)
+            if param_rule:
+                operation_rules[parameter['name']] = rule_generator.extract_keywords(parameter['description'], param_names)
+        parsed_rules[operation['operation_id']] = operation_rules
+
+    validator = Validator()
+    validated_rules = validator.validate(spec_parser.spec, parsed_rules)
+    enhancer = Enhancer(validated_rules)
+    enhancer.enhance(spec_parser.spec)
 
 
 if __name__ == "__main__":
